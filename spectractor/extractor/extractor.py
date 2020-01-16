@@ -70,11 +70,11 @@ def Spectractor(file_name, output_directory, guess, target, disperser_label="", 
     output_filename = output_filename.replace('.fits', '_spectrum.fits')
     output_filename = output_filename.replace('.fz', '_spectrum.fits')
     output_filename = os.path.join(output_directory, output_filename)
-    output_filename_spectrogram = output_filename.replace('spectrum','spectrogram')
-    output_filename_psf = output_filename.replace('spectrum.fits','table.csv')
+    output_filename_spectrogram = output_filename.replace('spectrum', 'spectrogram')
+    output_filename_psf = output_filename.replace('spectrum.fits', 'table.csv')
     # Find the exact target position in the raw cut image: several methods
     my_logger.info('\n\tSearch for the target in the image...')
-    target_pixcoords = find_target(image, guess)
+    target_pixcoords, order0_subimage, stard2D = find_target(image, guess, output_subimage=True)
     # Rotate the image: several methods
     turn_image(image)
     # Find the exact target position in the rotated image: several methods
@@ -84,9 +84,9 @@ def Spectractor(file_name, output_directory, guess, target, disperser_label="", 
     spectrum = Spectrum(image=image)
     # Subtract background and bad pixels
     extract_spectrum_from_image(image, spectrum, w=parameters.PIXWIDTH_SIGNAL,
-                                ws = (parameters.PIXDIST_BACKGROUND,
-                                      parameters.PIXDIST_BACKGROUND+parameters.PIXWIDTH_BACKGROUND),
-                                right_edge=parameters.CCD_IMSIZE-200)
+                                ws=(parameters.PIXDIST_BACKGROUND,
+                                    parameters.PIXDIST_BACKGROUND + parameters.PIXWIDTH_BACKGROUND),
+                                right_edge=parameters.CCD_IMSIZE - 200)
     spectrum.atmospheric_lines = atmospheric_lines
     # Calibrate the spectrum
     calibrate_spectrum(spectrum)
@@ -106,4 +106,3 @@ def Spectractor(file_name, output_directory, guess, target, disperser_label="", 
     spectrum.chromatic_psf.table['lambdas'] = spectrum.lambdas
     spectrum.chromatic_psf.table.write(output_filename_psf, overwrite=True)
     return spectrum
-

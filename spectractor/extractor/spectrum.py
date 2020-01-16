@@ -5,6 +5,7 @@ from iminuit import Minuit
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from scipy.integrate import quad
 
 from spectractor import parameters
 from spectractor.config import set_logger
@@ -526,6 +527,8 @@ def detect_lines(lines, lambdas, spec, spec_err=None, fwhm_func=None, snr_minlev
     >>> spec.data = spectrum
     >>> spec.err = spectrum_err
     >>> fwhm_func = interp1d(lambdas, 0.01 * lambdas)
+    >>> from spectractor import parameters
+    >>> parameters.DEBUG = True
 
     Detect the lines
     >>> lines = Lines([HALPHA, HBETA, O2], hydrogen_only=True,
@@ -538,15 +541,15 @@ def detect_lines(lines, lambdas, spec, spec_err=None, fwhm_func=None, snr_minlev
     >>> spec.lines = lines
     >>> fig = plt.figure()
     >>> plot_spectrum_simple(plt.gca(), lambdas, spec.data, data_err=spec.err)
-    >>> lines.plot_detected_lines(plt.gca())
+    >>> lines.plot_detected_lines(plt.gca(), print_table=True)
     >>> if parameters.DISPLAY: plt.show()
     """
 
     # main settings
     my_logger = set_logger(__name__)
-    bgd_npar = parameters.CALIB_BGD_NPARAMS
-    peak_width = parameters.CALIB_PEAK_WIDTH
-    bgd_width = parameters.CALIB_BGD_WIDTH
+    bgd_npar = parameters.CALIB_BGD_NPARAMS  # number of unknown parameters for background
+    peak_width = parameters.CALIB_PEAK_WIDTH  # half range to look for local extrema in pixels around tabulated line values
+    bgd_width = parameters.CALIB_BGD_WIDTH  # size of the peak sides to use to fit spectrum base line
     if lines.hydrogen_only:
         peak_width = 7
         bgd_width = 15
@@ -557,7 +560,8 @@ def detect_lines(lines, lambdas, spec, spec_err=None, fwhm_func=None, snr_minlev
     # plt.errorbar(lambdas,spec,yerr=spec_err)
     spec = np.copy(spec)
     spec = savgol_filter(spec, 5, 2)
-    # plt.plot(lambdas,spec)
+    # plt.plot(lambdas, spec)
+    # plt.title('lamdas vs spec')
     # plt.show()
     # initialisation
     lambda_shifts = []
@@ -823,6 +827,7 @@ def detect_lines(lines, lambdas, spec, spec_err=None, fwhm_func=None, snr_minlev
             line.fitted = True
             line.fit_lambdas = lambdas[index]
             line.fit_popt = popt
+            # lines.my_logger.warning(f'Tableau Multigauss {popt}')
             line.fit_gauss = gauss(lambdas[index], *popt[bgd_npar + 3 * j:bgd_npar + 3 * j + 3])
             x_norm = rescale_x_for_legendre(lambdas[index])
             line.fit_bgd = np.polynomial.legendre.legval(x_norm, popt[:bgd_npar])
@@ -830,8 +835,19 @@ def detect_lines(lines, lambdas, spec, spec_err=None, fwhm_func=None, snr_minlev
             line.fit_chisq = chisq
             line.fit_fwhm = FWHM
             line.fit_bgd_npar = bgd_npar
+            def integrand_eqw(lbda):
+                x = -1 + (2*(lbda - lambdas[index][0])/(lambdas[index][-1] - lambdas[index][0]))
+                bgd = np.polynomial.legendre.legval(x, popt[:bgd_npar])
+                g = gauss(lbda, *popt[bgd_npar + 3 * j:bgd_npar + 3 * j + 3])
+                return (bgd - g)/bgd
+
+            #line.fit_eqw = (line.fit_bgd - line.fit_bgd_npar) / line.fit_bgd_npar
+            # lines.my_logger.warning(f'Integrale : {line.fit_eqw}')
+            # lines.my_logger.warning(f'sigma : {popt[bgd_npar + 3 *j+2]}')
+            # lines.my_logger.warning(f'Integrale Analytique : {(popt[bgd_npar + 3 *j])*(popt[bgd_npar + 3 *j+2])*(np.sqrt(2*np.pi))}')
             if snr < snr_minlevel:
                 continue
+            line.fit_eqw = quad(integrand_eqw, (-5 * popt[bgd_npar + 3 * j + 2]) + popt[bgd_npar + 3 * j + 1], (5 * popt[bgd_npar + 3 * j + 2]) + popt[bgd_npar + 3 * j + 1])[0]
             line.high_snr = True
             if line.use_for_calibration:
                 # wavelength shift between tabulate and observed lines

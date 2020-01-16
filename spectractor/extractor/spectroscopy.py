@@ -65,6 +65,7 @@ class Line:
         self.fit_popt = None
         self.fit_chisq = None
         self.fit_bgd_npar = parameters.CALIB_BGD_NPARAMS
+        self.fit_eqw = None
 
     def gaussian_model(self, lambdas, A=1, sigma=2, use_fit=False):
         """Return a Gaussian model of the spectral line.
@@ -327,15 +328,18 @@ class Lines:
                 signal_level = popt[bgd_npar + 3 * j]
                 if line.high_snr:
                     rows.append((line.label, line.wavelength, peak_pos, peak_pos - line.wavelength,
-                                 FWHM, signal_level, line.fit_snr, line.fit_chisq))
+                                 FWHM, signal_level, line.fit_snr, line.fit_chisq, line.fit_eqw))
                 j += 1
         if print_table and len(rows) > 0:
-            t = Table(rows=rows, names=('Line', 'Tabulated', 'Detected', 'Shift', 'FWHM', 'Amplitude', 'SNR', 'Chisq'),
-                      dtype=('a10', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4'))
+            t = Table(rows=rows,
+                      names=('Line', 'Tabulated', 'Detected', 'Shift', 'FWHM', 'Amplitude', 'SNR', 'Chisq', 'eqw'),
+                      dtype=('a10', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4', 'f4'))
             for col in t.colnames[1:-3]:
                 t[col].unit = 'nm'
-            t[t.colnames[-1]].unit = 'reduced'
-            print(t)
+            t[t.colnames[-2]].unit = 'reduced'
+            t.pprint_all()
+            t.write('t.csv', overwrite=True)
+
 
 # Line catalog
 
@@ -411,7 +415,7 @@ HEII3 = Line(617.1, atmospheric=False, label=r'$He_{II}$', label_pos=[0.007, 0.0
 HEII4 = Line(856.7, atmospheric=False, label=r'$He_{II}$', label_pos=[0.007, 0.02])
 HI = Line(833.9, atmospheric=False, label=r'$H_{I}$', label_pos=[0.007, 0.02])
 ISM_LINES = [OIII, CII1, CII2, CIV, CII3, CIII1, CIII2, CIII3, HEI1, HEI2, HEI3, HEI4, HEI5, HEI6, HEI7, HEI8,
-             HEI9, HEI10, HEI11, HEI12, HEI13, OI, OII, HEII1, HEII2, HEII3, HEII4,  HI, FEII1, FEII2, FEII3, FEII4]
+             HEI9, HEI10, HEI11, HEI12, HEI13, OI, OII, HEII1, HEII2, HEII3, HEII4, HI, FEII1, FEII2, FEII3, FEII4]
 
 # HG-AR lines https://oceanoptics.com/wp-content/uploads/hg1.pdf
 HG1 = Line(253.652, atmospheric=False, label=r'$Hg$', label_pos=[0.007, 0.02])
@@ -444,12 +448,12 @@ AR15 = Line(866.794, atmospheric=False, label=r'$Ar$', label_pos=[0.007, 0.02])
 AR16 = Line(912.297, atmospheric=False, label=r'$Ar$', label_pos=[0.007, 0.02])
 AR17 = Line(922.450, atmospheric=False, label=r'$Ar$', label_pos=[0.007, 0.02])
 HGAR_LINES = [HG1, HG2, HG3, HG4, HG5, HG6, HG7, HG8, HG9, HG10, HG11, HG12,
-               AR1, AR2, AR3, AR4, AR5, AR6, AR7, AR8, AR9, AR10, AR11, AR12, AR13, AR14, AR15, AR16, AR17 ]
-
+              AR1, AR2, AR3, AR4, AR5, AR6, AR7, AR8, AR9, AR10, AR11, AR12, AR13, AR14, AR15, AR16, AR17]
 
 if __name__ == "__main__":
     import doctest
+
     if np.__version__ >= "1.14.0":
         np.set_printoptions(legacy="1.13")
 
-    doctest.testmod()
+    # doctest.testmod()

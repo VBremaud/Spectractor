@@ -366,7 +366,7 @@ def load_LPNHE_image(image):  # pragma: no cover
     parameters.CCD_IMSIZE = image.data.shape[1]
 
 
-def find_target(image, guess, rotated=False):
+def find_target(image, guess, rotated=False, output_subimage=False):
     """Find the target in the Image instance.
 
     The object is search in a windows of size defined by the XWINDOW and YWINDOW parameters,
@@ -380,7 +380,9 @@ def find_target(image, guess, rotated=False):
     guess: array_like
         Two parameter array giving the estimated position of the target in the image.
     rotated: bool
-        If True, the target is searched in the rotated image.
+        If True, the target is searched in the rotated image (default: False).
+    output_subimage: bool
+        If True, the sub image of the target is returned (default: False).
 
     Returns
     -------
@@ -403,11 +405,12 @@ def find_target(image, guess, rotated=False):
         Dx = parameters.XWINDOW_ROT
         Dy = parameters.YWINDOW_ROT
     niter = 2
+    sub_image_subtracted = None
     for i in range(niter):
         sub_image, x0, y0, Dx, Dy, sub_errors = find_target_init(image=image, guess=guess, rotated=rotated,
                                                                  widths=[Dx, Dy])
         # find the target
-        avX, avY = find_target_2Dprofile(image, sub_image, guess, sub_errors=sub_errors)
+        avX, avY, sub_image_subtracted, star2D = find_target_2Dprofile(image, sub_image, guess, sub_errors=sub_errors)
         # compute target position
         theX = x0 - Dx + avX
         theY = y0 - Dy + avY
@@ -423,7 +426,10 @@ def find_target(image, guess, rotated=False):
         image.header.comments['TARGETX'] = 'target position on X axis'
         image.header['TARGETY'] = theY
         image.header.comments['TARGETY'] = 'target position on Y axis'
-    return [theX, theY]
+    if output_subimage is True:
+        return [theX, theY], sub_image_subtracted, star2D
+    else:
+        return [theX, theY]
 
 
 def find_target_init(image, guess, rotated=False, widths=[parameters.XWINDOW, parameters.YWINDOW]):
@@ -652,7 +658,7 @@ def find_target_2Dprofile(image, sub_image, guess, sub_errors=None):
             plt.show()
         if parameters.LSST_SAVEFIGPATH:  # pragma: no cover
             f.savefig(os.path.join(parameters.LSST_SAVEFIGPATH, 'namethisplot2.pdf'))
-    return new_avX, new_avY
+    return new_avX, new_avY, sub_image_subtracted, star2D
 
 
 def compute_rotation_angle_hessian(image, deg_threshold=10, width_cut=parameters.YWINDOW,

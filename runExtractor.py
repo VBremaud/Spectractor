@@ -27,7 +27,7 @@ if __name__ == "__main__":
         parameters.VERBOSE = True
 
     file_names = args.input
-
+    print("logbook:", args.config)
     logbook = LogBook(logbook=args.logbook)
     for file_name in file_names:
         tag = file_name.split('/')[-1]

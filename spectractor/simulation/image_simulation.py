@@ -282,6 +282,8 @@ class ImageModel(Image):
 
 
 def ImageSim(image_filename, spectrum_filename, outputdir, pwv=5, ozone=300, aerosols=0.03, A1=1, A2=0.05,
+             temperature=None,
+             pressure=None,
              psf_poly_params=None,
              with_rotation=True,
              with_stars=True):
@@ -337,8 +339,10 @@ def ImageSim(image_filename, spectrum_filename, outputdir, pwv=5, ozone=300, aer
     # Spectrum model
     my_logger.info('\n\tSpectum model...')
     airmass = image.header['AIRMASS']
-    pressure = image.header['OUTPRESS']
-    temperature = image.header['OUTTEMP']
+    if temperature is None:
+        temperature = image.header['OUTTEMP']
+    if pressure is None:
+        pressure = image.header['OUTPRESS']
     telescope = TelescopeTransmission(image.filter)
 
     # Load PSF
@@ -346,7 +350,7 @@ def ImageSim(image_filename, spectrum_filename, outputdir, pwv=5, ozone=300, aer
         my_logger.info('\n\tUse PSF parameters from _table.csv file.')
         psf_poly_params = spectrum.chromatic_psf.from_table_to_poly_params()
         # TODO: solve this Gaussian PSF part issue
-        psf_poly_params[-7:-1] = 0.
+        # psf_poly_params[-7:-1] = 0.
 
     # Increase
     spectrogram = SpectrogramSimulatorCore(spectrum, telescope, disperser, airmass, pressure,
